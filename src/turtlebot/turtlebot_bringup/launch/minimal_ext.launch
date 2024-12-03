@@ -21,4 +21,10 @@
   <include unless="$(eval arg('battery') == 'None')" file="$(find turtlebot_bringup)/launch/includes/netbook.launch.xml">
     <arg name="battery" value="$(arg battery)" />
   </include>
+  
+  <!-- Custom listening script as node -->
+  <node pkg="turtlebot_bringup" type="turtlebot_mqtt.py" name="turtlebot_mqtt" output="screen">
+    <param name="broker_ip" value="mqtt://192.168.0.41" />
+    <param name="mqtt_port" value="1883" />
+  </node>
 </launch>
