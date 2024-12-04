@@ -6,7 +6,7 @@ from collections import deque
 # MQTT Config
 BROKER = "localhost"
 PORT = 1883
-TOPICS_SUB = [("esp32/doorbell", 0), ("pi/complete", 0)]
+TOPICS_SUB = [("esp32/doorbell", 0), ("pi/done", 0), ("pi/unavailable", 0)]
 
 # Resource Handling
 req_q = deque()                     # to-be-processed queue
@@ -43,14 +43,18 @@ def handle_payload(topic, msg, client):
         
         turtlebots[id-2] = 1
         print(f'Selecting turtlebot with Pi ID: {id}')
-        pub_q.append(('pi/deploy', str(id), 1))
-
-        print(f'Opening door!')
-        pub_q.append(('esp32/door', 'open', 1))
-    elif topic == 'pi/complete':
+        pub_q.append(('pi/deploy', str(id), 1))     # deploy a turtlebot
+        pub_q.append(('esp32/door', 'open', 1))     # deploy a door open
+    elif topic == 'pi/done':
         try:
             turtlebots[int(msg)-2] = 0
             print(f'Marked {msg} as free. Turtlebots available: {turtlebots}')
+        except Exception as e:
+            print(f'Invalid ID given. Exception: {e}')
+    elif topic == 'pi/unavailable':
+        try:
+            turtlebots[int(msg)-2] = 1
+            print(f'Marked {msg} as in use or dead. Turtlebots available: {turtlebots}')
         except Exception as e:
             print(f'Invalid ID given. Exception: {e}')
 
@@ -69,6 +73,7 @@ if __name__ == "__main__":
                 handle_payload(topic, msg, client)
             if pub_q:
                 topic, msg, qos = pub_q.popleft()
+                print(f'Publishing {topic}/{msg} with a QoS of {qos}.')
                 client.publish(topic, msg, qos=qos)
     except KeyboardInterrupt as e:
         print("\n\nKeyboard Interrupt, closing...")

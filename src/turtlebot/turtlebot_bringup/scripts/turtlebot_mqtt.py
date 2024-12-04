@@ -1,72 +1,79 @@
 #!/usr/bin/env python
 import rospy
 from std_msgs.msg import String
+from collections import deque
 import paho.mqtt.client as mqtt # install paho-mqtt thru pip if not on the system alr
 import os
 
+# MISC
+TURTLEBOT_ID = int(os.environ['PI_ID']) # will be 2-7
+global ros_pub
+global mqtt_client
+
 # MQTT Configuration
-MQTT_BROKER = rospy.get_param('broker_ip', "192.168.1.41")        # Desktop (master) IP
+MQTT_BROKER = rospy.get_param('broker_ip', "192.168.0.41")        # Desktop (master) IP
 MQTT_PORT = int(rospy.get_param('port', 1883))                    # Port
-MQTT_TOPIC_SUB_ESP = "robot/control"  # MQTT topic to listen for commands
-MQTT_TOPIC_PUB_ESP = "robot/status"   # MQTT topic to publish robot status
+MQTT_TOPIC_SUB = "pi/deploy"  # MQTT topic to listen for commands
+MQTT_TOPIC_PUB = "pi/done"   # MQTT topic to publish robot status
 
 # ROS Configuration
-ROS_TOPIC_SUB = "/cmd_move"        # ROS topic for incoming movement commands
-ROS_TOPIC_PUB = "/robot_status"    # ROS topic to publish status updates
-
-# what
-TURTLEBOT_ID = os.environ['ROS_IP'] # i forgot the environ name, will get this later lol
+ROS_TOPIC_SUB = f"/pi{TURTLEBOT_ID}/status"      # ROS topic to receive status updates from driving, dancing, and greeting
+ROS_TOPIC_PUB = f"/pi{TURTLEBOT_ID}/cmd_move"    # ROS topic to publish movement commands
 
 def on_connect(client, userdata, flags, rc):
     """Callback when MQTT connects to the broker."""
+    global mqtt_client
     if rc == 0:
         rospy.loginfo("Connected to MQTT Broker!")
-        
-        client.subscribe(MQTT_TOPIC_SUB_ESP)
+        mqtt_client.subscribe(MQTT_TOPIC_SUB)
     else:
         rospy.logerr("Failed to connect to MQTT, return code %d", rc)
 
 def on_message(client, userdata, msg):
     """Callback when a message is received from MQTT."""
+    global ros_pub
     rospy.loginfo("MQTT Message Received: %s -> %s", msg.topic, msg.payload.decode())
-    # Publish the MQTT message to a ROS topic
-    ros_pub.publish(msg.payload.decode())
-
+    topic, msg = msg.topic, msg.payload.decode()
+    print('what')
+    try:a topic...
+        if topic == "pi/deploy" and int(msg) == TURTLEBOT_ID:
+            ros_pub.publish(msg)    # this should call the move file by sending a msg over /pi{ID}/cmd_move, need another script to execute said commands or maybe have them in here?
+            rospy.loginfo("Deploying Turtlebot %s", str(TURTLEBOT_ID))
+    except Exception as e:
+        rospy.loginfo(f"[ERROR] {e}")
+    
 def ros_callback(data):
     """Callback when a message is received on the ROS topic."""
     rospy.loginfo("ROS Message Received: %s", data.data)
     # Publish the ROS message to the MQTT topic
-    mqtt_client.publish(MQTT_TOPIC_PUB_ESP, data.data)
+    print(data.data)
+    mqtt_client.publish(data.data)
+    # need to look into this on how to signal that the turtlebot is done doing its thing
+    # client.publish(MQTT_TOPIC_PUB, str(TURTLEBOT_ID))
 
 if __name__ == "__main__":
-    # Initialize ROS node
-    rospy.init_node('ros_mqtt_bridge', anonymous=True)
-
-    # ROS Subscribers and Publishers
+    # ROS Client
+    rospy.init_node(f'ros_pi{TURTLEBOT_ID}_comms', anonymous=True)
     ros_pub = rospy.Publisher(ROS_TOPIC_PUB, String, queue_size=10)
     ros_sub = rospy.Subscriber(ROS_TOPIC_SUB, String, ros_callback)
 
-    # Initialize MQTT Client
+    # MQTT Cilent
     mqtt_client = mqtt.Client()
     mqtt_client.on_connect = on_connect
     mqtt_client.on_message = on_message
-
-    # Connect to MQTT Broker
     try:
         mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
     except Exception as e:
         rospy.logerr("Failed to connect to MQTT broker: %s", str(e))
 
-    # Start MQTT Loop in a separate thread
-    mqtt_client.loop_start()
-
-    # ROS Spin Loop
+    # Loop MQTT and ROS
+    rate = rospy.Rate(1)
     try:
+        rospy.loginfo("Loop starting...")
+        mqtt_client.loop_start()
         rospy.spin()
     except rospy.ROSInterruptException:
-        print("interrupted babyyyyy")
-        pass
+        print("\ninterrupted babyyyyy")
     finally:
         mqtt_client.loop_stop()
-        mqtt_client = mqtt.Client()
-        mqtt_client.disconnect()
+        mqtt_client.disconnect()# this should call the move file
