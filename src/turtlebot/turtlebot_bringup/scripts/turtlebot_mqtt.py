@@ -9,12 +9,14 @@ import os
 TURTLEBOT_ID = int(os.environ['PI_ID']) # will be 2-7
 global ros_pub
 global mqtt_client
+available = True
 
 # MQTT Configuration
 MQTT_BROKER = rospy.get_param('broker_ip', "192.168.0.41")        # Desktop (master) IP
 MQTT_PORT = int(rospy.get_param('port', 1883))                    # Port
-MQTT_TOPIC_SUB = "pi/deploy"  # MQTT topic to listen for commands
-MQTT_TOPIC_PUB = "pi/done"   # MQTT topic to publish robot status
+MQTT_TOPIC_SUB = "pi/deploy"                     # MQTT topic to listen for deployment
+MQTT_TOPIC_PUB_0 = "pi/done"                     # MQTT topic to say a pi is done
+MQTT_TOPIC_PUB_1 = "pi/unavailable"              # MQTT topic to say a pi is unavailable
 
 # ROS Configuration
 ROS_TOPIC_SUB = f"/pi{TURTLEBOT_ID}/status"      # ROS topic to receive status updates from driving, dancing, and greeting
@@ -31,14 +33,18 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     """Callback when a message is received from MQTT."""
-    global ros_pub
+    global ros_pub, mqtt_client
     rospy.loginfo("MQTT Message Received: %s -> %s", msg.topic, msg.payload.decode())
     topic, msg = msg.topic, msg.payload.decode()
     print('what')
-    try:a topic...
-        if topic == "pi/deploy" and int(msg) == TURTLEBOT_ID:
-            ros_pub.publish(msg)    # this should call the move file by sending a msg over /pi{ID}/cmd_move, need another script to execute said commands or maybe have them in here?
-            rospy.loginfo("Deploying Turtlebot %s", str(TURTLEBOT_ID))
+    try:
+        if int(msg) == TURTLEBOT_ID:
+            if available and topic == "pi/deploy":
+                ros_pub.publish(msg)    # this should call the move file by sending a msg over /pi{ID}/cmd_move, need another script to execute said commands or maybe have them in here?
+                rospy.loginfo("Deploying Turtlebot %s", str(TURTLEBOT_ID))
+            elif not available:
+                mqtt_client.publish(MQTT_TOPIC_PUB_1, str(TURTLEBOT_ID), qos=0)
+                rospy.logwarn("Turtlebot requested is unavailable.")
     except Exception as e:
         rospy.loginfo(f"[ERROR] {e}")
     
@@ -47,9 +53,10 @@ def ros_callback(data):
     rospy.loginfo("ROS Message Received: %s", data.data)
     # Publish the ROS message to the MQTT topic
     print(data.data)
-    mqtt_client.publish(data.data)
+    mqtt_client.publish(data.data, str(TURTLEBOT_ID))
     # need to look into this on how to signal that the turtlebot is done doing its thing
-    # client.publish(MQTT_TOPIC_PUB, str(TURTLEBOT_ID))
+    # if we done....
+    # client.publish("pi/done", str(TURTLEBOT_ID))
 
 if __name__ == "__main__":
     # ROS Client
