@@ -1,17 +1,27 @@
 #!/usr/bin/env python3
 import paho.mqtt.client as mqtt
-import datetime
+import time, datetime
 from collections import deque
 
 # MQTT Config
 BROKER = "localhost"
 PORT = 1883
-TOPICS_SUB = [("esp32/doorbell", 0), ("pi/done", 0), ("pi/unavailable", 0)]
-
+TOPICS_SUB = [("esp32/doorbell", 0), ("pi/done", 0), ("pi/unavailable", 0), ("pi/pong", 0)]
 # Resource Handling
 req_q = deque()                     # to-be-processed queue
 pub_q = deque()                     # to-be-published queue
 turtlebots = [0, 0, 0, 0, 0, 0]     # turtlebots in use (pi 2 to pi 7, index 0 is pi 2!)
+# DEBUG
+testing = True  # bypasses time security
+
+def millis():
+    return int(time.time() *  1000)
+
+def ping_turtlebots():
+    for i in range(len(turtlebots)):
+        turtlebots[i] = 1
+        pub_q.append(('pi/ping', str(i+2), 1))
+    print('Updating turtlebots array...')
 
 def on_connect(client, userdata, flags, reason_code, properties):
     print(f"Connected with result code: {reason_code}! \nListening...")
@@ -26,17 +36,18 @@ def handle_payload(topic, msg, client):
     if topic == 'esp32/doorbell':
         curr_time = datetime.datetime.now()
         print('Checking time...')
-        if not (9 <= curr_time.hour <= 16):
+        if not testing and not (9 <= curr_time.hour <= 16):
             print('Invalid time. Cannot deploy Turtlebots.')
             return -1
         print('Time is valid!')
         if sum(turtlebots) == len(turtlebots):
-            print('Somehow, all the turtlebots are in use. Cannot deploy Turtlebots.')
+            print('No Turtlebots are available.')
             return -1
         if msg == "test":
             id = 5
         else:
             id = 0
+            # Check available turtlebots
             while id < len(turtlebots) and turtlebots[id] != 0:
                 id += 1
             id += 2
@@ -45,7 +56,7 @@ def handle_payload(topic, msg, client):
         print(f'Selecting turtlebot with Pi ID: {id}')
         pub_q.append(('pi/deploy', str(id), 1))     # deploy a turtlebot
         pub_q.append(('esp32/door', 'open', 1))     # deploy a door open
-    elif topic == 'pi/done':
+    elif topic == 'pi/done' or topic == 'pi/pong':
         try:
             turtlebots[int(msg)-2] = 0
             print(f'Marked {msg} as free. Turtlebots available: {turtlebots}')
@@ -59,6 +70,7 @@ def handle_payload(topic, msg, client):
             print(f'Invalid ID given. Exception: {e}')
 
 if __name__ == "__main__":
+    prevTime = millis()-13000
     try:
         client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         client.on_message = on_message
@@ -66,14 +78,20 @@ if __name__ == "__main__":
 
         client.connect(BROKER, PORT, 60)
         client.loop_start()
+
         while True:
-            # round robin lol
+            # Check turtlebots' status every 15s
+            if millis() - prevTime >= 15000:
+                ping_turtlebots()
+                prevTime = millis()
+            # Round Robin lol
             if req_q:
                 topic, msg = req_q.popleft()
                 handle_payload(topic, msg, client)
             if pub_q:
                 topic, msg, qos = pub_q.popleft()
-                print(f'Publishing {topic}/{msg} with a QoS of {qos}.')
+                if topic != 'pi/ping':
+                    print(f'Publishing {topic}/{msg} with a QoS of {qos}.')
                 client.publish(topic, msg, qos=qos)
     except KeyboardInterrupt as e:
         print("\n\nKeyboard Interrupt, closing...")
