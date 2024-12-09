@@ -14,9 +14,6 @@ turtlebots = [0, 0, 0, 0, 0, 0]     # turtlebots in use (pi 2 to pi 7, index 0 i
 # DEBUG
 testing = True  # bypasses time security
 
-def millis():
-    return int(time.time() *  1000)
-
 def ping_turtlebots():
     for i in range(len(turtlebots)):
         turtlebots[i] = 1
@@ -35,11 +32,9 @@ def on_message(client, userdata, msg):
 def handle_payload(topic, msg, client):
     if topic == 'esp32/doorbell':
         curr_time = datetime.datetime.now()
-        print('Checking time...')
         if not testing and not (9 <= curr_time.hour <= 16):
             print('Invalid time. Cannot deploy Turtlebots.')
             return -1
-        print('Time is valid!')
         if sum(turtlebots) == len(turtlebots):
             print('No Turtlebots are available.')
             return -1
@@ -51,9 +46,8 @@ def handle_payload(topic, msg, client):
             while id < len(turtlebots) and turtlebots[id] != 0:
                 id += 1
             id += 2
-        
         turtlebots[id-2] = 1
-        print(f'Selecting turtlebot with Pi ID: {id}')
+        print(f'Checks successful. Selecting turtlebot with Pi ID: {id}')
         pub_q.append(('pi/deploy', str(id), 1))     # deploy a turtlebot
         pub_q.append(('esp32/door', 'open', 1))     # deploy a door open
     elif topic == 'pi/done' or topic == 'pi/pong':
@@ -70,7 +64,8 @@ def handle_payload(topic, msg, client):
             print(f'Invalid ID given. Exception: {e}')
 
 if __name__ == "__main__":
-    prevTime = millis()-13000
+    prevTime = int(time.time())-30
+    currTime = int(time.time())
     try:
         client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         client.on_message = on_message
@@ -80,10 +75,10 @@ if __name__ == "__main__":
         client.loop_start()
 
         while True:
-            # Check turtlebots' status every 15s
-            if millis() - prevTime >= 15000:
+            # Check turtlebots' status every 30s
+            if currTime - prevTime >= 30:
                 ping_turtlebots()
-                prevTime = millis()
+                prevTime = currTime
             # Round Robin lol
             if req_q:
                 topic, msg = req_q.popleft()
