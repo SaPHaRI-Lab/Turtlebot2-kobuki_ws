@@ -46,7 +46,7 @@ def increase_speed():
     move_cmd = Twist()
     
     # Set a higher linear velocity
-    move_cmd.linear.x = 2.5  # Forward speed (increase this value for faster movement)
+    move_cmd.linear.x = 3.0  # Forward speed (increase this value for faster movement)
     move_cmd.angular.z = 0.5  # No rotation (straight line)
 
     rospy.loginfo("Increasing speed and moving robot...")
