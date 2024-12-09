@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
 import rospy
-import time
+import os, time
 from playsound import playsound
 from geometry_msgs.msg import Twist, PoseStamped
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 import actionlib
 
-audio_file = '~/kobuki_ws/src/turtlebot/turtlebot_bringup/assets/quack.mp3'
+audio_file = os.path.expanduser('~/kobuki_ws/src/turtlebot/turtlebot_bringup/assets/quack.mp3')
 
 def send_goal(goal_pose):
     # Create an action client
@@ -108,7 +108,7 @@ def chester():
         goal4.pose.orientation.w = 0.026
 
         send_goal(goal4.pose)
-        time.sleep(3)
+        time.sleep(2)
 
         # Dr. Block Room
         goal5 = PoseStamped()

@@ -1,12 +1,11 @@
 <launch>
-  <!-- RPLIDAR node should be launched separately, as you are already doing -->
+  <!-- RPLIDAR node should be launched separately, as you are already doing -->
 
-  <!-- Gmapping -->
-  <include file="$(find turtlebot_navigation)/launch/includes/gmapping/gmapping.launch.xml">
-    <arg name="scan_topic" value="/scan" /> <!-- Use RPLIDAR scan topic -->
-  </include>
+  <!-- Gmapping -->
+  <include file="$(find turtlebot_navigation)/launch/includes/gmapping/gmapping.launch.xml">
+    <arg name="scan_topic" value="/scan" /> <!-- Use RPLIDAR scan topic -->
+  </include>
 
-  <!-- Move base -->
-  <include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml"/>
-
+  <!-- Move base -->
+  <include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml"/>
 </launch>

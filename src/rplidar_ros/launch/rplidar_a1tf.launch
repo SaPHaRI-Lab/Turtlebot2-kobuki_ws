@@ -1,7 +1,7 @@
 <launch>
   <!-- RPLIDAR Node -->
   <node name="rplidarNode" pkg="rplidar_ros" type="rplidarNode" output="screen">
-    <param name="serial_port" type="string" value="/dev/ttyUSB0"/>
+    <param name="serial_port" type="string" value="/dev/ttyUSB1"/>
     <param name="serial_baudrate" type="int" value="115200"/>
     <param name="frame_id" type="string" value="base_laser"/>
     <param name="inverted" type="bool" value="true"/>
@@ -10,4 +10,5 @@
 
   <!-- Static Transform Publisher -->
   <node name="static_transform_publisher" pkg="tf2_ros" type="static_transform_publisher" output="screen" args="0 0 0.6 0 1 0 0 base_link base_laser"/>
+
 </launch>
