@@ -3,7 +3,7 @@ Contains all necessary packages for the Turtlebot2 on ROS Noetic.
 
 Also custom built for Jetson -> Pi overhaul, LiDAR, MQTT communication, and rviz.
 
-Documentation for the entire project is currently private.
+Documentation for the entire project is [here](https://github.com/SaPHaRI-Lab/Turtlebot2)
 
 ## For the Master:
 `.master.py` is an executable for the master computer--functioning as the broker and mastermind of the Turtlebot swarm.
